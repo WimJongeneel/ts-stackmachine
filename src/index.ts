@@ -16,9 +16,10 @@ export type StackValue =
 
 export const stack: StackValue[] = []
 
-export type Instruction = 
-    | { kind: 'push', value: StackValue }
-    | { kind: 'command', name: keyof typeof commands }
+export interface Instruction {
+    label: keyof typeof commands
+    argument: StackValue
+}
 
 export let code = new Map<string, Instruction[]>()
 
@@ -39,19 +40,22 @@ const t =`
         add
         push 3
         equals
-        push .if1
-        swap
-        if
+        if .if1
 
     .if1
+        debug
         push true
         push 3
+        push 2
         push .f1
+        debug
         invoke
+        debug
+        print
     
     .f1
-        duplicate
-        print
+    print
+    print
         push 88
         push 99
         push 33
@@ -67,23 +71,20 @@ const tt = `
         push 3
         push 3
         equals
-        if
+        if 
 
-        push .b1true
         push 1
         push 2
-        equals
+        equals 
+        if .b1true
 
-        if
         push false
-        push .cont
-        jump
+        jump .cont
 
         
     .b1true
         push true
-        push .cont
-        jump
+        jump .cont
 
     .cont
         print
@@ -142,8 +143,8 @@ const loop = `
         print
         
         decrease
-        push .loop
-        jump
+        push 
+        jump .loop
 
     .cont
         push done
@@ -188,15 +189,12 @@ const m = `
 const run = () => {
     let i: Instruction;
 
-    while(i = instructions.shift()) {
-        if(i.kind == 'push') stack.push(i.value)
-        if(i.kind == 'command') commands[i.name]()
-    }
+    while(i = instructions.shift()) commands[i.label](i.argument)
 }
 
-code = parse(m)
+code = parse(tt)
 setInstructions(code.get('.main'))
-init_heap(25)
+init_heap(0)
 run()
 
 /**

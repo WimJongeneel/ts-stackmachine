@@ -1,97 +1,100 @@
-import { code, heap, Reference, ReturnMarker, setInstructions, stack, StackValue } from "."
+import { code, heap, instructions, Reference, ReturnMarker, setInstructions, stack, StackValue } from "."
 import { alloc, clear } from "./heap"
 
 export const commands = {
-    alloc: () => {
-        const a = pop_number()
+    push: (v: StackValue) => {
+        stack.push(v)
+    },
+    alloc: (v: StackValue) => {
+        const a = v == undefined ? pop_number() : assertNumber(v)
         stack.push(alloc(a))
     },
-    clear: () => {
+    clear: (_: StackValue) => {
         const a = pop_number()
         clear(a)
     },
-    h_assign: () => {
+    h_assign: (_: StackValue) => {
         const value = pop()
         const offset = pop_number()
         const pointer = pop_number()
         heap[pointer+offset + 1] = value
     },
-    h_read: () => {
+    h_read: (_: StackValue) => {
         const offset = pop_number()
         const pointer = pop_number()
         const value = heap[pointer+offset+1]
         if(typeof value == 'object') throw new Error("Cannot move object header to stack")
         stack.push(value)
     },
-    add: () => {
+    add: (_: StackValue) => {
         const a = pop_number()
         const b = pop_number()
         stack.push(a + b)
     },
-    decrease: () => {
+    decrease: (_: StackValue) => {
         const n = pop_number()
         stack.push(n - 1)
     },
-    equals: () => {
+    equals: (_: StackValue) => {
         const a = pop()
         const b = pop()
         stack.push(a === b)
     },
-    invoke: () => {
+    invoke: (_: StackValue) => {
         const name = pop_ref()
         const argNumber = pop_number()
         // TODO: just insert ReturnMarker with offset?
         const args: StackValue[] = []
         for(let i = 0; i < argNumber; i++) args.push(stack.pop())
         stack.push(ReturnMarker)
-        for(const a in args) stack.push(a)
+        for(const a of args) stack.push(a)
         // push args by number
-        setInstructions(code.get(name))
+        setInstructions(code.get(name).concat(instructions))
     },
-    return: () => {
+    return: (_: StackValue) => {
         let r = stack.pop()
         let value = r
         while(value != ReturnMarker) value = stack.pop()
         if(r != ReturnMarker) stack.push(r)
     },
-    if: () => {
+    if: (v: StackValue) => {
         const b = pop_bool()
-        if(b) commands.jump()
-        else pop_ref()
+        const l = v == undefined ? pop_ref() : assertReference(v)
+        if(b) commands.jump(l)
     },
-    jump: () => {
-        const name = pop_ref()
+    jump: (v: StackValue) => {
+        const name = v == undefined ? pop_ref() : assertReference(v)
         setInstructions(code.get(name))
     },
-    print: () => {
+    print: (_: StackValue) => {
         const value = pop()
         console.log(value)
     },
-    drop: () => {
+    drop: (_: StackValue) => {
         pop()
     },
-    duplicate: () => {
+    duplicate: (_: StackValue) => {
         let last = pop()
         stack.push(last)
         stack.push(last)
     },
-    swap: () => {
+    swap: (_: StackValue) => {
         const a = pop()
         const b = pop()
         stack.push(a)
         stack.push(b)
 
     },
-    not: () => {
+    not: (_: StackValue) => {
         const b = pop_bool()
         stack.push(!b)
     },
-    debug: () => {
+    debug: (_: StackValue) => {
         console.log(stack)
         console.log(heap)
     },
-    local: () => {
-        const index = pop_number()
+    local: (v: StackValue) => {
+        const index = v == undefined ? pop_number() : assertNumber(v)
         const start = stack.lastIndexOf(ReturnMarker) + 1
         if(index > 0) stack.push(stack[start + index])
     }
@@ -119,4 +122,14 @@ const pop_bool = (): boolean => {
     const value = pop()
     if(typeof value == 'boolean') return value
     throw new Error("Expected to pop a boolean, got: " + value.toString())
+}
+
+const assertNumber = (v: StackValue) => {
+    if(typeof v == 'number') return v
+    throw new Error('Expected number, got ' + typeof v)
+}
+
+const assertReference = (v: StackValue) => {
+    if(typeof v == 'string') return v
+    throw new Error('Expected Reference, got ' + typeof v)
 }

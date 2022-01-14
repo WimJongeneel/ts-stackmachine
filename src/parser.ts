@@ -12,17 +12,16 @@ export const parse = (c: string): Map<string, Instruction[]> => {
             code.set(current, buffer)
             current = line
             buffer = []
-        }
-        else if(line.startsWith('push ')) {
-            const value = line.replace('push ', '')
-            if(value == 'true') buffer.push({ kind: 'push', value: true })
-            else if(value == 'false') buffer.push({ kind: 'push', value: true })
-            else if(!Number.isNaN(Number(value))) buffer.push({ kind: 'push', value: Number(value) })
-            else buffer.push({ kind: 'push', value: value })
         } else {
-            buffer.push({ kind: 'command', name: line as any})
+            const [ label, argument ] = line.split(/\s+/, 2)
+            
+            if(argument == undefined) buffer.push({label: label as any, argument })
+            else if(argument == 'true') buffer.push({label: label as any, argument: true })
+            else if(argument == 'false') buffer.push({label: label as any, argument: false })
+            else if(!Number.isNaN(Number(argument))) buffer.push({label: label as any, argument: Number(argument) })
+            else buffer.push({label: label as any, argument: argument })
         }
     }
-    code.set(current, buffer)
+        code.set(current, buffer)
     return code
 }
