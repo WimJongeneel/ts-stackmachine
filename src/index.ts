@@ -1,115 +1,36 @@
-type Reference = string
+import { commands } from "./commands"
+import { init_heap } from "./heap"
+import { parse } from "./parser"
 
-const ReturnMarker = Symbol("ReturnMarker")
+export type Reference = string
+export type Pointer = number
 
-type StackValue =
+export const ReturnMarker = Symbol("ReturnMarker")
+
+export type StackValue =
     | number
     | boolean
     | Reference
     | typeof ReturnMarker
+    | Pointer
 
-const stack: StackValue[] = []
+export const stack: StackValue[] = []
 
-type Instruction = 
+export type Instruction = 
     | { kind: 'push', value: StackValue }
     | { kind: 'command', name: keyof typeof commands }
 
-const code = new Map<string, Instruction[]>()
+export let code = new Map<string, Instruction[]>()
 
-let instructions: Instruction[] = []
+export let instructions: Instruction[] = []
 
-const pop = () => {
-    const peek = stack[stack.length -1]
-    if(peek == ReturnMarker) throw new Error('Cannot pop ReturnMarker')
-    return stack.pop()
+export const setInstructions = (i: Instruction[]) => instructions = [...i]
+
+export interface ObjectHeader {
+    size: number
 }
 
-const pop_number = (): number => {
-    const value = pop()
-    if(typeof value == 'number') return value
-    throw new Error("Expected to pop a number, got: " + value.toString())
-}
-
-const pop_ref = (): Reference => {
-    const value = pop()
-    if(typeof value == 'string') return value
-    throw new Error("Expected to pop a Reference, got: " + value.toString())
-}
-
-const pop_bool = (): boolean => {
-    const value = pop()
-    if(typeof value == 'boolean') return value
-    throw new Error("Expected to pop a boolean, got: " + value.toString())
-}
-
-const commands = {
-    add: () => {
-        const a = pop_number()
-        const b = pop_number()
-        stack.push(a + b)
-    },
-    decrease: () => {
-        const n = pop_number()
-        stack.push(n - 1)
-    },
-    equals: () => {
-        const a = pop()
-        const b = pop()
-        stack.push(a === b)
-
-    },
-    invoke: () => {
-        const name = pop_ref()
-        stack.push(ReturnMarker)
-        instructions = code.get(name)
-    },
-    return: () => {
-        let r = stack.pop()
-        let value = r
-        while(value != ReturnMarker) value = stack.pop()
-        if(r != ReturnMarker) stack.push(r)
-    },
-    if: () => {
-        const b = pop_bool()
-        if(b) commands.jump()
-        else pop_ref()
-    },
-    jump: () => {
-        const name = pop_ref()
-        instructions = [...code.get(name)]
-    },
-    print: () => {
-        const value = pop()
-        console.log(value)
-    },
-    drop: () => {
-        pop()
-    },
-    duplicate: () => {
-        let last = stack.pop()
-        // check for multiple ReturnMarkers
-        if(last == ReturnMarker) {
-            last = stack.pop()
-            stack.push(ReturnMarker)
-        }
-        stack.push(last)
-        stack.push(last)
-    },
-    swap: () => {
-        const a = pop()
-        const b = pop()
-        stack.push(a)
-        stack.push(b)
-
-    },
-    not: () => {
-        const b = pop_bool()
-        stack.push(!b)
-    },
-    debug: () => {
-        console.log(stack)
-    }
-}
+export const heap: Array<StackValue | ObjectHeader> = []
 
 const t =`
     .main
@@ -216,6 +137,9 @@ const loop = `
         push .cont
         swap
         if
+
+        duplicate
+        print
         
         decrease
         push .loop
@@ -224,6 +148,41 @@ const loop = `
     .cont
         push done
         print
+`
+
+const m = `
+    .main
+        push 3
+        alloc
+
+        push 2
+        alloc
+
+        # b[0] = 'a2'
+        duplicate
+        push 0
+        push a2
+        h_assign
+
+        duplicate
+        push 0
+        h_read
+        print
+
+        drop
+
+        duplicate
+        push 0
+        push aa
+        h_assign
+
+        duplicate
+        push 2
+        push cc
+        h_assign
+
+        debug
+
 `
 
 const run = () => {
@@ -235,32 +194,9 @@ const run = () => {
     }
 }
 
-const load = (c: string) => {
-    let current = ''
-    let buffer: Instruction[] = []
-    for(const line of c.split('\n').map(l => l.trim())) {
-        if(line == '') continue
-
-        if(line.startsWith('.')) {
-            code.set(current, buffer)
-            current = line
-            buffer = []
-        }
-        else if(line.startsWith('push ')) {
-            const value = line.replace('push ', '')
-            if(value == 'true') buffer.push({ kind: 'push', value: true })
-            else if(value == 'false') buffer.push({ kind: 'push', value: true })
-            else if(!Number.isNaN(Number(value))) buffer.push({ kind: 'push', value: Number(value) })
-            else buffer.push({ kind: 'push', value: value })
-        } else {
-            buffer.push({ kind: 'command', name: line as any})
-        }
-    }
-    code.set(current, buffer)
-}
-
-load(loop)
-instructions = [...code.get('.main')]
+code = parse(m)
+setInstructions(code.get('.main'))
+init_heap(25)
 run()
 
 /**
