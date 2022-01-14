@@ -9,8 +9,8 @@ export const commands = {
         const a = v == undefined ? pop_number() : assertNumber(v)
         stack.push(alloc(a))
     },
-    clear: (_: StackValue) => {
-        const a = pop_number()
+    clear: (v: StackValue) => {
+        const a =v == undefined ? pop_number() : assertNumber(v)
         clear(a)
     },
     h_assign: (_: StackValue) => {
@@ -52,6 +52,7 @@ export const commands = {
         setInstructions(code.get(name).concat(instructions))
     },
     return: (_: StackValue) => {
+        // TODO clear remaining instructions from the code
         let r = stack.pop()
         let value = r
         while(value != ReturnMarker) value = stack.pop()
