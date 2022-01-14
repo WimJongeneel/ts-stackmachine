@@ -1,4 +1,4 @@
-import { code, heap, instructions, Reference, ReturnMarker, setInstructions, stack } from "."
+import { code, heap, Reference, ReturnMarker, setInstructions, stack, StackValue } from "."
 import { alloc, clear } from "./heap"
 
 export const commands = {
@@ -36,11 +36,16 @@ export const commands = {
         const a = pop()
         const b = pop()
         stack.push(a === b)
-
     },
     invoke: () => {
         const name = pop_ref()
+        const argNumber = pop_number()
+        // TODO: just insert ReturnMarker with offset?
+        const args: StackValue[] = []
+        for(let i = 0; i < argNumber; i++) args.push(stack.pop())
         stack.push(ReturnMarker)
+        for(const a in args) stack.push(a)
+        // push args by number
         setInstructions(code.get(name))
     },
     return: () => {
@@ -66,12 +71,7 @@ export const commands = {
         pop()
     },
     duplicate: () => {
-        let last = stack.pop()
-        // check for multiple ReturnMarkers
-        if(last == ReturnMarker) {
-            last = stack.pop()
-            stack.push(ReturnMarker)
-        }
+        let last = pop()
         stack.push(last)
         stack.push(last)
     },
@@ -94,9 +94,6 @@ export const commands = {
         const index = pop_number()
         const start = stack.lastIndexOf(ReturnMarker) + 1
         if(index > 0) stack.push(stack[start + index])
-        else {
-            // walk back and ignore ReturnMarker
-        }
     }
 }
 
