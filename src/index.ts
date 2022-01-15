@@ -61,6 +61,43 @@ const tt = `
         print
 `
 
+const i = `
+    push 1
+
+    push 4
+    push 2
+    push 2
+    invoke .add
+
+    duplicate
+    print
+
+    push -2
+    push 2
+    invoke .add
+
+    print
+    print
+
+    exit
+
+    .add
+        add
+        
+        duplicate
+        push 4
+        equals
+        push 1
+        invoke .eq
+
+        return
+
+    .eq
+        print
+        return
+
+`
+
 // 1 == 1 && 3 == 2
 
 const ttt = `
@@ -166,7 +203,7 @@ const run = () => {
     }
 }
 
-instructions = parse(tt)
+instructions = parse(i)
 console.log(instructions.map((l ,i) => [i, l]))
 init_heap(0)
 run()

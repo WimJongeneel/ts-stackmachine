@@ -40,14 +40,13 @@ export const commands = {
         const b = pop()
         stack.push(a === b)
     },
-    invoke: (_: StackValue) => {
-        const pc = pop_number()
+    invoke: (v: StackValue) => {
+        const pc = v == undefined ? pop_number() : assertNumber(v)
         const argNumber = pop_number()
-        const returnPc = programCounter + 1
         // TODO: just insert ReturnMarker with offset?
         const args: StackValue[] = []
         for(let i = 0; i < argNumber; i++) args.push(stack.pop())
-        stack.push(returnPc)
+        stack.push(programCounter)
         stack.push(ReturnMarker)
         for(const a of args) stack.push(a)
         // push args by number
