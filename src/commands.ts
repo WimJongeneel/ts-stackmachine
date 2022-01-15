@@ -1,4 +1,4 @@
-import { code, heap, instructions, Reference, ReturnMarker, setInstructions, stack, StackValue } from "."
+import { exit, heap, instructions, programCounter, Reference, ReturnMarker, setProgramCounter, stack, StackValue } from "."
 import { alloc, clear } from "./heap"
 
 export const commands = {
@@ -10,7 +10,7 @@ export const commands = {
         stack.push(alloc(a))
     },
     clear: (v: StackValue) => {
-        const a =v == undefined ? pop_number() : assertNumber(v)
+        const a = v == undefined ? pop_number() : assertNumber(v)
         clear(a)
     },
     h_assign: (_: StackValue) => {
@@ -41,31 +41,35 @@ export const commands = {
         stack.push(a === b)
     },
     invoke: (_: StackValue) => {
-        const name = pop_ref()
+        const pc = pop_number()
         const argNumber = pop_number()
+        const returnPc = programCounter + 1
         // TODO: just insert ReturnMarker with offset?
         const args: StackValue[] = []
         for(let i = 0; i < argNumber; i++) args.push(stack.pop())
+        stack.push(returnPc)
         stack.push(ReturnMarker)
         for(const a of args) stack.push(a)
         // push args by number
-        setInstructions(code.get(name).concat(instructions))
+        setProgramCounter(pc)
     },
     return: (_: StackValue) => {
         // TODO clear remaining instructions from the code
         let r = stack.pop()
         let value = r
         while(value != ReturnMarker) value = stack.pop()
+        const pc = pop_number()
         if(r != ReturnMarker) stack.push(r)
+        setProgramCounter(pc)
     },
     if: (v: StackValue) => {
         const b = pop_bool()
-        const l = v == undefined ? pop_ref() : assertReference(v)
+        const l = v == undefined ? pop_number() : assertNumber(v)
         if(b) commands.jump(l)
     },
     jump: (v: StackValue) => {
-        const name = v == undefined ? pop_ref() : assertReference(v)
-        setInstructions(code.get(name))
+        const pc = v == undefined ? pop_number() : assertNumber(v)
+        setProgramCounter(pc)
     },
     print: (_: StackValue) => {
         const value = pop()
@@ -98,6 +102,9 @@ export const commands = {
         const index = v == undefined ? pop_number() : assertNumber(v)
         const start = stack.lastIndexOf(ReturnMarker) + 1
         if(index > 0) stack.push(stack[start + index])
+    },
+    exit: () => {
+        exit()
     }
 }
 

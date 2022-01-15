@@ -21,11 +21,15 @@ export interface Instruction {
     argument: StackValue
 }
 
-export let code = new Map<string, Instruction[]>()
+export let programCounter = -1
 
 export let instructions: Instruction[] = []
 
-export const setInstructions = (i: Instruction[]) => instructions = [...i]
+export const setProgramCounter = (pc: number) => {
+    programCounter = pc
+}
+
+export const exit = () => programCounter = Infinity
 
 export interface ObjectHeader {
     size: number
@@ -33,54 +37,21 @@ export interface ObjectHeader {
 
 export const heap: Array<StackValue | ObjectHeader> = []
 
-const t =`
-    .main
-        push 1
-        push 2
-        add
-        push 3
-        equals
-        if .if1
-
-    .if1
-        debug
-        push true
-        push 3
-        push 2
-        push .f1
-        debug
-        invoke
-        debug
-        print
-    
-    .f1
-    print
-    print
-        push 88
-        push 99
-        push 33
-        return
-
-`
-
 // 2 == 3 || 1 == 1
-
 const tt = `
-    .main
-        push .b1true
-        push 3
-        push 3
-        equals
-        if 
+    push .b1true
+    push 3
+    push 3
+    equals
+    if 
 
-        push 1
-        push 2
-        equals 
-        if .b1true
+    push 1
+    push 1
+    equals 
+    if .b1true
 
-        push false
-        jump .cont
-
+    push false
+    jump .cont
         
     .b1true
         push true
@@ -95,7 +66,7 @@ const tt = `
 const ttt = `
     .main
         push .b1false
-        push 1
+        push 2
         push 2
         equals
         not
@@ -187,13 +158,16 @@ const m = `
 `
 
 const run = () => {
-    let i: Instruction;
-
-    while(i = instructions.shift()) commands[i.label](i.argument)
+    while(programCounter < instructions.length - 1) {
+        programCounter++
+        const i = instructions[programCounter]
+        console.log(programCounter, i)
+        commands[i.label](i.argument)
+    }
 }
 
-code = parse(tt)
-setInstructions(code.get('.main'))
+instructions = parse(tt)
+console.log(instructions.map((l ,i) => [i, l]))
 init_heap(0)
 run()
 
